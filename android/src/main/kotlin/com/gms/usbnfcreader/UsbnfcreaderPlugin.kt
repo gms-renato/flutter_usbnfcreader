@@ -34,12 +34,17 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler {
   private lateinit var context: Context
   private var TAG = "USB_NFC_READER";
 
-  private fun bytesToHexString(bytes: ByteArray): String {
-    val sb = StringBuilder()
+  fun hexToDecimal(hex: String): Int {
+    return hex.toInt(16)
+  }
+
+  private fun bytesToHexArray(bytes: ByteArray): Array<Int> {
+    var list = arrayOf<Int>()
     for (b in bytes) {
-      sb.append(String.format("%02x", b))
+      val currentValue = String.format("%02x", b)
+      list += hexToDecimal(currentValue)
     }
-    return sb.toString()
+    return list
   }
 
   override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
@@ -133,9 +138,9 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler {
           val response = ByteArray(256)
           val responseLength: Int = reader.transmit(0, command, command.size, response, response.size)
           if (responseLength >= 2) {
-            val idBytes = response.copyOf(responseLength - 2).asList()
-//            val idNumber = bytesToHexString(idBytes)
-              Log.d(TAG, "Success getting id : ${idBytes.joinToString(",")}")
+            val idBytes = response.copyOf(responseLength - 2)
+            val idNumber = bytesToHexArray(idBytes)
+              Log.d(TAG, "Success getting id : ${idNumber.joinToString(",")}")
           } else {
             Log.d(TAG, "Failed getting id")
           }
