@@ -124,8 +124,7 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler {
   }
 
   override fun onMethodCall(call: MethodCall, result: Result) {
-    if (call.method == "getPlatformVersion") {
-//      result.success("Android ${android.os.Build.VERSION.RELEASE}")
+    if (call.method == "startScanner") {
       startNFCScanner()
       reader.setOnStateChangeListener { _, _, currState ->
         if (currState == Reader.CARD_PRESENT) {
@@ -147,6 +146,8 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler {
         }
       }
       result.success("ok")
+    } else if (call.method == "stopScanner") {
+      reader.close();
     } else {
       result.notImplemented()
     }
