@@ -2,6 +2,7 @@ package com.gms.usbnfcreader
 
 import androidx.annotation.NonNull
 
+import android.app.Activity
 import android.content.IntentFilter
 import android.content.Intent
 import android.hardware.usb.UsbManager
@@ -9,6 +10,8 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import com.acs.smartcard.Reader
 import io.flutter.plugin.common.MethodChannel.Result
 import android.app.PendingIntent
@@ -20,7 +23,7 @@ import java.lang.Exception
 import java.nio.ByteBuffer
 
 /** UsbnfcreaderPlugin */
-class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler {
+class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
   companion object {
     private const val ACTION_USB_PERMISSION = "ACTION_USB_PERMISSION"
   }
@@ -29,6 +32,7 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler {
   /// This local reference serves to register the plugin with the Flutter Engine and unregister it
   /// when the Flutter Engine is detached from the Activity
   private lateinit var channel : MethodChannel
+  private lateinit var activity: Activity
   private lateinit var reader: Reader
   private lateinit var usbManager: UsbManager
   private lateinit var context: Context
@@ -38,7 +42,11 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler {
     return hex.toInt(16)
   }
 
-  private fun bytesToHexArray(bytes: ByteArray): Array<Int> {
+  private fun bytesToHex(bytes: ByteArray): String {
+    return bytes.joinToString("") { String.format("%02x", it) }
+  }
+
+  private fun bytesToDecimalArray(bytes: ByteArray): Array<Int> {
     var list = arrayOf<Int>()
     for (b in bytes) {
       val currentValue = String.format("%02x", b)
@@ -75,7 +83,7 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler {
         Log.d(TAG,"Reader detached")
         Log.d(TAG,"Connection to reader is disconnected")
         reader.close()
-        channel.invokeMethod("onReaderDetached")
+        channel.invokeMethod("onReaderDetached", null)
 
         val filterAttached = IntentFilter()
         filterAttached.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
@@ -87,7 +95,7 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler {
   private val receiverAttached = object : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
       Log.d(TAG, "USB Attached")
-      channel.invokeMethod("onReaderAttached")
+      channel.invokeMethod("onReaderAttached", null)
       startNFCScanner()
     }
   }
@@ -140,9 +148,15 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler {
           val responseLength: Int = reader.transmit(0, command, command.size, response, response.size)
           if (responseLength >= 2) {
             val idBytes = response.copyOf(responseLength - 2)
-            val idNumber = bytesToHexArray(idBytes)
+            val idNumber = bytesToDecimalArray(idBytes)
+            var idHex = bytesToHex(idBytes)
+
             activity.runOnUiThread {
-              channel.invokeMethod("onDiscovered", idNumber)
+              val result = mapOf(
+                "idNumber" to idNumber.joinToString(","),
+                "idHex" to idHex
+              )
+              channel.invokeMethod("onDiscovered", result)
             }
             Log.d(TAG, "Success getting id : ${idNumber.joinToString(",")}")
           } else {
@@ -179,5 +193,17 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler {
 
   override fun onAttachedToActivity(binding: ActivityPluginBinding) {
     activity = binding.activity
+  }
+
+  override fun onDetachedFromActivity() {
+    // no op
+  }
+
+  override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+    activity = binding.activity
+  }
+
+  override fun onDetachedFromActivityForConfigChanges() {
+    // no op
   }
 }

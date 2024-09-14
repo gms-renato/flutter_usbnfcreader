@@ -38,16 +38,25 @@ class Usbnfcreader {
 
   // _handleOnDiscovered
   void _handleOnDiscovered(MethodCall call) async {
-    // final tag = $GetNfcTag(Map.from(call.arguments));
-    // await _onDiscovered?.call(tag);
+    final Map<String, dynamic> arguments =
+        Map<String, dynamic>.from(call.arguments);
+    final String idHex = arguments['idHex'] as String;
+    final List<int> idNumber = (arguments['idNumber'] as String)
+        .split(',')
+        .map((e) => int.parse(e.trim()))
+        .toList();
+
+    final NfcTag tag = NfcTag(hexId: idHex, id: idNumber);
+
+    await _onDiscovered?.call(tag);
   }
 }
 
 class NfcTag {
-  final String id;
-  final List<int> bytes;
+  final String hexId;
+  final List<int> id;
   const NfcTag({
+    required this.hexId,
     required this.id,
-    required this.bytes,
   });
 }

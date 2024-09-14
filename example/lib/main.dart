@@ -30,9 +30,11 @@ class _MyAppState extends State<MyApp> {
     // We also handle the message potentially returning null.
     try {
       _usbnfcreaderPlugin.startSession(onDiscovered: (tag) async {
-        print(tag.id);
+        debugPrint("onDiscovered");
+        debugPrint(tag.hexId);
+        debugPrint(tag.id.toString());
       });
-      _usbnfcreaderPlugin.stopSession();
+      // _usbnfcreaderPlugin.stopSession();
     } on PlatformException {
       debugPrint("Failed to start NFC Scanner.");
     }

@@ -1,3 +1,3 @@
 import 'package:flutter/services.dart';
 
-const MethodChannel channel = MethodChannel('usbnfcreaderr');
+const MethodChannel channel = MethodChannel('usbnfcreader');
