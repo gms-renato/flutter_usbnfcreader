@@ -1,9 +1,10 @@
-name: gmschurch_usbnfcreader
+name: usbnfcreader
 description: "A new Flutter plugin project."
 version: 0.0.2
+homepage: https://github.com/gms-renato/flutter_usbnfcreader
 
 environment:
-    sdk: ^3.6.0-193.0.dev
+    sdk: ">=3.0.0 <4.0.0"
     flutter: ">=3.3.0"
 
 dependencies:
