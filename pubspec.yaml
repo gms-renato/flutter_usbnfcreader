@@ -1,6 +1,6 @@
 name: usbnfcreader
 description: "Android USB NFC Reader Plugin for ACR122U"
-version: 0.0.3
+version: 0.0.4
 homepage: https://github.com/gms-renato/flutter_usbnfcreader
 
 environment:

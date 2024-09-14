@@ -1,3 +1,8 @@
-## 0.0.1
+## 0.0.3
 
-* TODO: Describe initial release.
+-   Update README.md
+-   Remove unused dependencies
+
+## 0.0.4
+
+-   Lower compileSdk to 34
