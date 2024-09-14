@@ -72,9 +72,10 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler {
     override fun onReceive(context: Context, intent: Intent) {
       val device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE) as? UsbDevice
       if (device != null && device == reader.device) {
-        reader.close()
         Log.d(TAG,"Reader detached")
         Log.d(TAG,"Connection to reader is disconnected")
+        reader.close()
+        channel.invokeMethod("onReaderDetached")
 
         val filterAttached = IntentFilter()
         filterAttached.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
@@ -86,6 +87,7 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler {
   private val receiverAttached = object : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
       Log.d(TAG, "USB Attached")
+      channel.invokeMethod("onReaderAttached")
       startNFCScanner()
     }
   }
@@ -124,7 +126,7 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler {
   }
 
   override fun onMethodCall(call: MethodCall, result: Result) {
-    if (call.method == "startScanner") {
+    if (call.method == "startSession") {
       startNFCScanner()
       reader.setOnStateChangeListener { _, _, currState ->
         if (currState == Reader.CARD_PRESENT) {
@@ -139,14 +141,16 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler {
           if (responseLength >= 2) {
             val idBytes = response.copyOf(responseLength - 2)
             val idNumber = bytesToHexArray(idBytes)
-              Log.d(TAG, "Success getting id : ${idNumber.joinToString(",")}")
+            activity.runOnUiThread {
+              channel.invokeMethod("onDiscovered", idNumber)
+            }
+            Log.d(TAG, "Success getting id : ${idNumber.joinToString(",")}")
           } else {
             Log.d(TAG, "Failed getting id")
           }
         }
       }
-      result.success("ok")
-    } else if (call.method == "stopScanner") {
+    } else if (call.method == "stopSession") {
       reader.close();
     } else {
       result.notImplemented()
@@ -171,5 +175,9 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler {
   override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
     channel.setMethodCallHandler(null)
     unregister()
+  }
+
+  override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+    activity = binding.activity
   }
 }
