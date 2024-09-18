@@ -139,8 +139,10 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
 
   override fun onMethodCall(call: MethodCall, result: Result) {
     if (call.method == "startSession") {
-      isGracefullyStopped = false
       autoConnect = call.argument<Boolean>("autoConnect")
+      if (autoConnect) {
+        isGracefullyStopped = false
+      }
       reader.setOnStateChangeListener { _, _, currState ->
         if (currState == Reader.CARD_PRESENT) {
           Log.d(TAG, "Found a card")
