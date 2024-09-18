@@ -37,6 +37,8 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
   private lateinit var usbManager: UsbManager
   private lateinit var context: Context
   private var TAG = "USB_NFC_READER";
+  private var autoConnect: Boolean = true
+  private var isGracefullyStopped: Boolean = true
 
   fun hexToDecimal(hex: String): Int {
     return hex.toInt(16)
@@ -82,7 +84,9 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
       if (device != null && device == reader.device) {
         Log.d(TAG,"Reader detached")
         Log.d(TAG,"Connection to reader is disconnected")
-        reader.close()
+        if (isGracefullyStopped) {
+          reader.close()
+        }
         channel.invokeMethod("onReaderDetached", null)
 
         val filterAttached = IntentFilter()
@@ -135,7 +139,8 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
 
   override fun onMethodCall(call: MethodCall, result: Result) {
     if (call.method == "startSession") {
-      startNFCScanner()
+      isGracefullyStopped = false
+      autoConnect = call.argument<Boolean>("autoConnect")
       reader.setOnStateChangeListener { _, _, currState ->
         if (currState == Reader.CARD_PRESENT) {
           Log.d(TAG, "Found a card")
@@ -165,6 +170,7 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
         }
       }
     } else if (call.method == "stopSession") {
+      isGracefullyStopped = true
       reader.close();
     } else {
       result.notImplemented()

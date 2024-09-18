@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:usbnfcreader/usbnfcreader_method_channel.dart';
 
 typedef NfcTagCallback = Future<void> Function(NfcTag tag);
+typedef NfcReaderStateCallback = void Function();
 
 class Usbnfcreader {
   static Usbnfcreader? _instance;
@@ -11,10 +12,18 @@ class Usbnfcreader {
     channel.setMethodCallHandler(_handleMethodCall);
   }
   NfcTagCallback? _onDiscovered;
+  NfcReaderStateCallback? _onReaderAttached;
+  NfcReaderStateCallback? _onReaderDetached;
 
-  void startSession({required NfcTagCallback onDiscovered}) {
+  void startSession(
+      {required NfcTagCallback onDiscovered,
+      bool autoConnect = true,
+      NfcReaderStateCallback? onReaderAttached,
+      NfcReaderStateCallback? onReaderDetached}) {
     _onDiscovered = onDiscovered;
-    channel.invokeMethod('startSession');
+    _onReaderAttached = onReaderAttached;
+    _onReaderDetached = onReaderDetached;
+    channel.invokeMethod('startSession', {'autoConnect': autoConnect});
   }
 
   void stopSession() {
@@ -28,8 +37,10 @@ class Usbnfcreader {
         _handleOnDiscovered(call);
         break;
       case 'onReaderAttached':
+        _onReaderAttached?.call();
         break;
       case 'onReaderDetached':
+        _onReaderDetached?.call();
         break;
       default:
         throw ('Not implemented: ${call.method}');
