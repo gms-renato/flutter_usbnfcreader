@@ -78,15 +78,6 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
         Log.d(TAG, "Permission granted, opening connection to reader ...")
         reader.open(device)
         Log.d(TAG, "Reader is connected")
-        val id = device.getDeviceId()
-        val name = device.getDeviceName()
-        val productName = device.getProductName()
-        val vendorId = device.getVendorId()
-        Log.d(TAG, "ID: " + id)
-        Log.d(TAG, "Manufacturer: " + name)
-        Log.d(TAG, "productName: " + productName)
-        Log.d(TAG, "Vendor ID: " + vendorId)
-        Log.d(TAG, "Permission granted, opening connection to reader ...")
       } else {
         Log.d(TAG, "Permission denied, cannot open connection")
       }
