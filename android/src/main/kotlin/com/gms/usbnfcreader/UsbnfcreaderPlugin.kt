@@ -37,8 +37,6 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
   private lateinit var usbManager: UsbManager
   private lateinit var context: Context
   private var TAG = "USB_NFC_READER";
-  private var autoConnect: Boolean = true
-  private var isGracefullyStopped: Boolean = true
 
   fun hexToDecimal(hex: String): Int {
     return hex.toInt(16)
@@ -84,9 +82,7 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
       if (device != null && device == reader.device) {
         Log.d(TAG,"Reader detached")
         Log.d(TAG,"Connection to reader is disconnected")
-        if (isGracefullyStopped) {
-          reader.close()
-        }
+        reader.close()
         channel.invokeMethod("onReaderDetached", null)
 
         val filterAttached = IntentFilter()
@@ -98,35 +94,51 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
 
   private val receiverAttached = object : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-      Log.d(TAG, "USB Attached")
-      channel.invokeMethod("onReaderAttached", null)
+      // start NFC Scanner
       startNFCScanner()
     }
   }
 
   private fun startNFCScanner() {
-      val device = usbManager.deviceList.values.firstOrNull()
-      if (device != null) {
-        Log.d(TAG, "device detected")
-        val filterPermission = IntentFilter()
-        filterPermission.addAction(ACTION_USB_PERMISSION)
-        context.registerReceiver(receiverPermission, filterPermission)
+    val device = usbManager.deviceList.values.firstOrNull()
+    if (device != null) {
+      Log.d(TAG, "device detected")
+      val filterPermission = IntentFilter()
+      filterPermission.addAction(ACTION_USB_PERMISSION)
+      context.registerReceiver(receiverPermission, filterPermission)
 
-        val filterDetached = IntentFilter()
-        filterDetached.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
-        context.registerReceiver(receiverDetached, filterDetached)
+      val filterDetached = IntentFilter()
+      filterDetached.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+      context.registerReceiver(receiverDetached, filterDetached)
 
-        val permissionIntent = PendingIntent.getBroadcast(context, 0, Intent(ACTION_USB_PERMISSION), 0)
-        usbManager.requestPermission(
-          device,
-          permissionIntent
-        )
+      // Coba berikan izin secara langsung tanpa dialog
+      if (usbManager.hasPermission(device)) {
+        Log.d(TAG, "Izin sudah diberikan, membuka koneksi ke pembaca...")
+        reader.open(device)
+        Log.d(TAG, "Pembaca terhubung")
       } else {
-        Log.d("startNFCScanner", "no device detected")
-        val filterAttached = IntentFilter()
-        filterAttached.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
-        context.registerReceiver(receiverAttached, filterAttached)
+        try {
+          // Metode ini mungkin memerlukan akses root
+          val usbManagerClass = usbManager.javaClass
+          val grantMethod = usbManagerClass.getMethod("grantPermission", UsbDevice::class.java)
+          grantMethod.invoke(usbManager, device)
+          
+          Log.d(TAG, "Izin diberikan secara otomatis, membuka koneksi ke pembaca...")
+          reader.open(device)
+          Log.d(TAG, "Pembaca terhubung")
+        } catch (e: Exception) {
+          Log.e(TAG, "Gagal memberikan izin secara otomatis: ${e.message}")
+          // Jika gagal, gunakan metode permintaan izin standar
+          val permissionIntent = PendingIntent.getBroadcast(context, 0, Intent(ACTION_USB_PERMISSION), 0)
+          usbManager.requestPermission(device, permissionIntent)
+        }
       }
+    } else {
+      Log.d("startNFCScanner", "tidak ada perangkat terdeteksi")
+      val filterAttached = IntentFilter()
+      filterAttached.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+      context.registerReceiver(receiverAttached, filterAttached)
+    }
   }
 
   fun toInt32(bytes:ByteArray):Int {
@@ -139,10 +151,6 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
 
   override fun onMethodCall(call: MethodCall, result: Result) {
     if (call.method == "startSession") {
-      autoConnect = call.argument<Boolean>("autoConnect")
-      if (autoConnect) {
-        isGracefullyStopped = false
-      }
       reader.setOnStateChangeListener { _, _, currState ->
         if (currState == Reader.CARD_PRESENT) {
           Log.d(TAG, "Found a card")
@@ -172,7 +180,6 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
         }
       }
     } else if (call.method == "stopSession") {
-      isGracefullyStopped = true
       reader.close();
     } else {
       result.notImplemented()

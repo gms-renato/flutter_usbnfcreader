@@ -29,6 +29,7 @@ class _MyAppState extends State<MyApp> {
     // Platform messages may fail, so we use a try/catch PlatformException.
     // We also handle the message potentially returning null.
     try {
+      debugPrint("startSession");
       _usbnfcreaderPlugin.startSession(
         onDiscovered: (tag) async {
           debugPrint("onDiscovered");
