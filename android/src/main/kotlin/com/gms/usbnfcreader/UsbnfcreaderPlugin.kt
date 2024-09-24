@@ -36,9 +36,7 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
   private lateinit var reader: Reader
   private lateinit var usbManager: UsbManager
   private lateinit var context: Context
-  private var TAG = "USB_NFC_READER";
-  private var autoConnect: Boolean = true
-  private var isGracefullyStopped: Boolean = true
+  private var TAG = "USB_NFC_READER"
 
   fun hexToDecimal(hex: String): Int {
     return hex.toInt(16)
@@ -69,6 +67,14 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
     override fun onReceive(context: Context, intent: Intent) {
       val device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE) as? UsbDevice
       if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false) && device != null) {
+        val id = device.getDeviceId()
+        val name = device.getDeviceName()
+        val productName = device.getProductName()
+        val vendorId = device.getVendorId()
+        Log.d(TAG, "ID: " + id)
+        Log.d(TAG, "Manufacturer: " + name)
+        Log.d(TAG, "productName: " + productName)
+        Log.d(TAG, "Vendor ID: " + vendorId)
         Log.d(TAG, "Permission granted, opening connection to reader ...")
         reader.open(device)
         Log.d(TAG, "Reader is connected")
@@ -84,9 +90,7 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
       if (device != null && device == reader.device) {
         Log.d(TAG,"Reader detached")
         Log.d(TAG,"Connection to reader is disconnected")
-        if (isGracefullyStopped) {
-          reader.close()
-        }
+        reader.close()
         channel.invokeMethod("onReaderDetached", null)
 
         val filterAttached = IntentFilter()
@@ -139,10 +143,6 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
 
   override fun onMethodCall(call: MethodCall, result: Result) {
     if (call.method == "startSession") {
-      autoConnect = call.argument<Boolean>("autoConnect")
-      if (autoConnect) {
-        isGracefullyStopped = false
-      }
       reader.setOnStateChangeListener { _, _, currState ->
         if (currState == Reader.CARD_PRESENT) {
           Log.d(TAG, "Found a card")
@@ -172,7 +172,6 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
         }
       }
     } else if (call.method == "stopSession") {
-      isGracefullyStopped = true
       reader.close();
     } else {
       result.notImplemented()
