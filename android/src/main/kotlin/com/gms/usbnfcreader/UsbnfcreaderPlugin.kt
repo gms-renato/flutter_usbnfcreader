@@ -25,7 +25,7 @@ import java.nio.ByteBuffer
 /** UsbnfcreaderPlugin */
 class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
   companion object {
-    private const val ACTION_USB_PERMISSION = "ACTION_USB_PERMISSION"
+    private const val ACTION_USB_PERMISSION = "com.gms.usbnfcreader.ACTION_USB_PERMISSION"
   }
   /// The MethodChannel that will the communication between Flutter and native Android
   ///
@@ -112,19 +112,24 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
       val device = usbManager.deviceList.values.firstOrNull()
       if (device != null) {
         Log.d(TAG, "device detected")
-        val filterPermission = IntentFilter()
-        filterPermission.addAction(ACTION_USB_PERMISSION)
-        context.registerReceiver(receiverPermission, filterPermission)
+        if (usbManager.hasPermission(device)) {
+          Log.d(TAG, "has permission")
+          reader.open(device)
+        } else {
+          val filterPermission = IntentFilter()
+          filterPermission.addAction(ACTION_USB_PERMISSION)
+          context.registerReceiver(receiverPermission, filterPermission)
 
-        val filterDetached = IntentFilter()
-        filterDetached.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
-        context.registerReceiver(receiverDetached, filterDetached)
+          val filterDetached = IntentFilter()
+          filterDetached.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+          context.registerReceiver(receiverDetached, filterDetached)
 
-        val permissionIntent = PendingIntent.getBroadcast(context, 0, Intent(ACTION_USB_PERMISSION), 0)
-        usbManager.requestPermission(
-          device,
-          permissionIntent
-        )
+          val permissionIntent = PendingIntent.getBroadcast(context, 0, Intent(ACTION_USB_PERMISSION), PendingIntent.FLAG_IMMUTABLE)
+          usbManager.requestPermission(
+            device,
+            permissionIntent
+          )
+        }
       } else {
         Log.d("startNFCScanner", "no device detected")
         val filterAttached = IntentFilter()
