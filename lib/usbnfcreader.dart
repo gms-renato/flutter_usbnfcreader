@@ -31,6 +31,14 @@ class Usbnfcreader {
     channel.invokeMethod('stopSession');
   }
 
+  void alertSuccess() {
+    channel.invokeMethod('alertSuccess');
+  }
+
+  void alertError() {
+    channel.invokeMethod('alertError');
+  }
+
   Future<void> _handleMethodCall(MethodCall call) async {
     switch (call.method) {
       case 'onDiscovered':

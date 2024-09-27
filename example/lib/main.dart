@@ -17,6 +17,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final _usbnfcreaderPlugin = Usbnfcreader.instance;
+  String _lastScannedTag = 'Belum ada tag yang dipindai';
 
   @override
   void initState() {
@@ -53,15 +54,37 @@ class _MyAppState extends State<MyApp> {
     if (!mounted) return;
   }
 
+  void _onAlertSuccessButtonPressed() {
+    _usbnfcreaderPlugin.alertSuccess();
+  }
+
+  void _onAlertErrorButtonPressed() {
+    _usbnfcreaderPlugin.alertError();
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('Plugin example app'),
+          title: const Text('Contoh Aplikasi Plugin'),
         ),
-        body: const Center(
-          child: Text('Running on'),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(_lastScannedTag),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _onAlertSuccessButtonPressed,
+                child: const Text('Alert Success'),
+              ),
+              ElevatedButton(
+                onPressed: _onAlertErrorButtonPressed,
+                child: const Text('Alert Error'),
+              ),
+            ],
+          ),
         ),
       ),
     );

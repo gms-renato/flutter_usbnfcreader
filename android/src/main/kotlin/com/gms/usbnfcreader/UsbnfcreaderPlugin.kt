@@ -37,6 +37,7 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
   private lateinit var usbManager: UsbManager
   private lateinit var context: Context
   private var TAG = "USB_NFC_READER"
+  private var turnOffBuzzer = false;
 
   fun hexToDecimal(hex: String): Int {
     return hex.toInt(16)
@@ -133,12 +134,40 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
       }
   }
 
-  fun toInt32(bytes:ByteArray):Int {
-    if (bytes.size != 4) {
-      throw Exception("wrong len")
+  private fun silentBuzzer(reader: Reader) {
+    val command = byteArrayOf(0xFF.toByte(), 0x00.toByte(), 0x52.toByte(), 0x00.toByte(), 0x00.toByte())
+    val response = ByteArray(256)
+    reader.transmit(0, command, command.size, response, response.size)
+  }
+
+  /**
+   * Only works if tag is connected
+   */
+  private fun alertSuccess(reader: Reader) {
+    try {
+      val binaryValue = "10001110".toInt(2)
+      val command = byteArrayOf(0xFF.toByte(), 0x00.toByte(), 0x40.toByte(), binaryValue.toByte(), 0x04.toByte(), 0x01.toByte(), 0x01.toByte(), 0x01.toByte(), 0x02.toByte())
+      val response = ByteArray(256)
+      reader.transmit(0, command, command.size, response, response.size)
+    } catch (exc: Exception) {
+      Log.e(TAG, "Failed at alertSuccess")
+      exc.message?.let { Log.e(TAG, it) }
     }
-    bytes.reverse()
-    return ByteBuffer.wrap(bytes).int
+  }
+
+  /**
+   * Only works if tag is connected
+   */
+  private fun alertError(reader: Reader) {
+    try {
+      val binaryValue = "01001101".toInt(2)
+      val command = byteArrayOf(0xFF.toByte(), 0x00.toByte(), 0x40.toByte(), binaryValue.toByte(), 0x04.toByte(), 0x01.toByte(), 0x01.toByte(), 0x02.toByte(), 0x02.toByte())
+      val response = ByteArray(256)
+      reader.transmit(0, command, command.size, response, response.size)
+    } catch (exc: Exception) {
+      Log.e(TAG, "Failed at alertSuccess")
+      exc.message?.let { Log.e(TAG, it) }
+    }
   }
 
   override fun onMethodCall(call: MethodCall, result: Result) {
@@ -150,7 +179,9 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
           Log.d(TAG, "Getting id...")
           reader.power(0, Reader.CARD_WARM_RESET)
           reader.setProtocol(0, Reader.PROTOCOL_T0 or Reader.PROTOCOL_T1)
-
+          if (turnOffBuzzer) {
+            silentBuzzer(reader)
+          }
           val response = ByteArray(256)
           val responseLength: Int = reader.transmit(0, command, command.size, response, response.size)
           if (responseLength >= 2) {
@@ -171,8 +202,13 @@ class UsbnfcreaderPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
           }
         }
       }
+      startNFCScanner()
     } else if (call.method == "stopSession") {
       reader.close();
+    } else if (call.method == "alertSuccess") {
+      alertSuccess(reader)
+    } else if (call.method == "alertError") {
+      alertError(reader)
     } else {
       result.notImplemented()
     }
